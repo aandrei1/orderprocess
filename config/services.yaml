@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+# See also https://symfony.com/doc/current/service_container/import.html
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\Orders\:
+        resource: '../src/Orders/'
+        exclude:
+            - '../src/Orders/Domain/'
+            - '../src/Orders/Infrastructure/Persistence/'
+
+    # Domain services (explicit registration)
+    App\Orders\Domain\:
+        resource: '../src/Orders/Domain/'
+
+    # Bus aliases
+    Symfony\Component\Messenger\MessageBusInterface $commandBus: '@command.bus'
+    Symfony\Component\Messenger\MessageBusInterface $queryBus: '@query.bus'
+    Symfony\Component\Messenger\MessageBusInterface $eventBus: '@event.bus'

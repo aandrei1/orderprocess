@@ -1,0 +1,41 @@
+framework:
+    messenger:
+        default_bus: command.bus
+        failure_transport: failed
+
+        transports:
+            async:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    auto_setup: true
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 2
+                    max_delay: 10000
+            failed:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: failed
+            sync: 'sync://'
+
+        routing:
+            'App\Orders\Application\Command\*': async
+            'App\Orders\Application\Query\*': sync
+
+        buses:
+            command.bus:
+                middleware:
+                    - doctrine_transaction
+            query.bus:
+                middleware:
+                    - doctrine_transaction
+            event.bus:
+                default_middleware: allow_no_handlers
+
+# when@test:
+#    framework:
+#        messenger:
+#            transports:
+#                async: 'in-memory://'
+#                failed: 'in-memory://'
