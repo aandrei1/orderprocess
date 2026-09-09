@@ -1,65 +1,82 @@
 # AGENTS.md
 
-Reguli pentru agentul AI (DeepSeek) pe acest repo: PHP/Symfony + PostgreSQL (Doctrine) + RabbitMQ (Messenger).
+Order-processing app — Symfony 8.1 / PHP 8.4, PostgreSQL (Doctrine), RabbitMQ (Messenger), modular monolith. Context: orders, product stock, payments.
 
-## Structură obligatorie
+## Architecture
+
+One directory per bounded context under `src/` (currently only `Orders/`, namespace `App\Orders\`):
 
 ```
-src/
-  Domain/        # logică de business pură. FĂRĂ Symfony, FĂRĂ Doctrine, FĂRĂ AMQP.
-  Application/   # command/query handlers, orchestrare use-case-uri
+src/Orders/
+  Domain/
+    Model/            # Entities + value objects. Pure: no Symfony, no Doctrine, no AMQP.
+    Event/            # Domain events, past tense (OrderPlaced, OrderPaid, ProductOutOfStock...)
+    Port/             # Interfaces (OrderRepository, ProductRepository, PaymentGateway)
+  Application/
+    Command/          # Commands (VerbNoun) + handlers (use-case orchestration)
+    Port/             # Application ports (DomainEventDispatcher)
   Infrastructure/
-    Persistence/ # Doctrine repos + mappings
-    Messaging/   # Messenger transports/handlers
-  UI/            # controllers, CLI
+    Persistence/      # Doctrine impls: repositories, Mapping/ (XML), Type/ (custom DBAL types)
+    Messaging/        # AMQP impls (MockPaymentGateway, OutboxDomainEventDispatcher)
+  UI/
+    Command/          # bin/console commands
+    Controller/       # HTTP controllers
 ```
-Dependențele curg spre interior. Domain nu importă niciodată din Infrastructure/UI.
 
-## Reguli de design (aplică, nu explica)
+Dependencies flow inwards. Domain never imports from Application, Infrastructure, or UI.
 
-- Entități = identitate + comportament. Value Objects = imutabile (Money, Email...).
-- Logică de business în Domain, nu în controller/entity-anemică.
-- Repository = interfață în Domain, implementare Doctrine în Infrastructure.
-- Command (schimbare) vs Query (citire) — bus-uri separate în messenger.yaml, nu unul singur pentru tot.
-- Injectează interfețe, nu clase concrete Doctrine/AMQP, în servicii și handlere.
-- Interfețe mici, specifice per use-case — nu un repository „god interface”.
+## Design rules (apply, do not explain)
 
-## RabbitMQ / Messenger
+- Entities = identity + behavior. Value objects = immutable (Money, Quantity...).
+- Business logic in Domain, not in controllers/anemic entities.
+- Repository/gateway = interface in `Domain/Port/`, Doctrine implementation in `Infrastructure/Persistence/`.
+- Command (change) vs Query (read): separate buses in messenger.yaml. Existing buses: `command.bus` (default), `query.bus`, `event.bus` — no new bus without reason.
+- Inject interfaces, not concrete Doctrine/AMQP classes, into services and handlers.
+- Small, use-case-specific interfaces — no god repositories.
 
-- Orice consumer trebuie idempotent (poate primi același mesaj de 2x). Verifică/deduplichează prin message_id.
-- Retry cu backoff + failed transport configurat. Niciun mesaj nu cade silențios.
-- Outbox pattern când o acțiune trebuie atomică cu un eveniment publicat: scrii în tabel `outbox` în aceeași tranzacție DB, worker separat publică.
-- Payload-ul mesajului = contract; schimbări backward-compatible (adaugi câmpuri, nu redenumești/ștergi).
-- Loghează message_id + correlation_id la consum.
+## Messenger / RabbitMQ
+
+- Buses: `command.bus` (default, routed `async`), `query.bus` (`sync`), `event.bus` (allow_no_handlers). Failure transport `failed`: 3 retries, backoff ×2, cap 10s.
+- Every consumer must be idempotent (same message 2× is expected). Deduplicate via message_id.
+- Outbox pattern when an action must be atomic with a published event: write to the `outbox` table in the same DB transaction; a separate worker publishes (see `OutboxDomainEventDispatcher`).
+- Message payload = contract; backward-compatible changes (add fields, don't rename/delete).
+- Log message_id + correlation_id on consumption.
 
 ## PostgreSQL / Doctrine
 
-- Schema se schimbă DOAR prin migrații Doctrine, niciodată manual.
-- Fără `findAll()`/hidratare completă pe liste mari — query builder + paginare.
-- Indecși pe coloane din WHERE/JOIN frecvente, inclusiv pe coloanele de dedup/outbox.
-- Tranzacții explicite pentru orice operație care trebuie atomică.
+- Schema changes ONLY via Doctrine migrations (`bin/console make:migration`), never manually.
+- No `findAll()`/full hydration on large lists — query builder + pagination.
+- Indexes on frequent WHERE/JOIN columns, including dedup/outbox columns.
+- Explicit transactions for any operation that must be atomic.
 
-## Cod
+## Code
 
-- `declare(strict_types=1);` peste tot, tipuri stricte, fără `mixed` evitabil.
-- PSR-12. Numire: comenzi `VerbNoun`, evenimente la trecut (`OrderPlaced`), handlere `{Mesaj}Handler`.
-- La cod nou → test corespunzător (unit pe Domain, integrare pe Infrastructure/Messaging).
-- Orice handler de mesaj are test care verifică idempotența (mesaj de 2x → un singur efect).
+- `declare(strict_types=1);` everywhere, no avoidable `mixed`.
+- PSR-12. Commands `VerbNoun`, events past tense (`OrderPlaced`), handlers `{Message}Handler`.
+- New code → tests: unit on Domain, integration on Infrastructure/Messaging.
+- Every message handler has a test proving idempotency (message 2× → single effect).
 
-## Comenzi de verificare (adaptează la composer.json real)
+## Local setup
+
+- `docker compose up -d` → php (port 8000), postgres (5432), rabbitmq (5672 + management UI 15672).
+- Env: `.env` (dev), `.env.dev`, `.env.test` — `DATABASE_URL`, `MESSENGER_TRANSPORT_DSN`.
+- Consume queues: `bin/console messenger:consume async -vv` (add `failed` to drain failures).
+
+## Verification
 
 ```
 composer install
+composer test:unit
+composer test:integration
+composer phpstan
+composer cs-fixer
 bin/console doctrine:migrations:migrate --dry-run
-vendor/bin/phpunit
-vendor/bin/phpstan analyse
-vendor/bin/php-cs-fixer fix --dry-run --diff
 ```
 
-## Interzis pentru agent
+## Forbidden
 
-- Modificare schemă DB fără migrație.
-- Dependențe Symfony/Doctrine/AMQP în Domain/.
-- Publicare mesaj + scriere DB în același pas fără tranzacție/outbox.
-- Refactoring masiv într-un singur commit — schimbări mici, reversibile.
-- Presupuneri pe bounded context/ambiguități — întreabă în loc să inventezi.
+- DB schema modification without a migration.
+- Symfony/Doctrine/AMQP dependencies in Domain/.
+- Message publishing + DB writing in the same step without transaction/outbox.
+- Massive refactoring in a single commit — small, reversible changes.
+- Assumptions on bounded-context ambiguities — ask instead of inventing.

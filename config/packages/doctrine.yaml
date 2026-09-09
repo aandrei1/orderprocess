@@ -3,6 +3,12 @@ doctrine:
         url: '%env(resolve:DATABASE_URL)%'
         server_version: '16'
         profiling_collect_backtrace: '%kernel.debug%'
+        types:
+            order_id: App\Orders\Infrastructure\Persistence\Type\OrderIdType
+            customer_id: App\Orders\Infrastructure\Persistence\Type\CustomerIdType
+            product_id: App\Orders\Infrastructure\Persistence\Type\ProductIdType
+            quantity: App\Orders\Infrastructure\Persistence\Type\QuantityType
+            money: App\Orders\Infrastructure\Persistence\Type\MoneyType
     orm:
         validate_xml_mapping: true
         naming_strategy: doctrine.orm.naming_strategy.underscore
@@ -10,11 +16,11 @@ doctrine:
             Doctrine\DBAL\Platforms\PostgreSQLPlatform: identity
         auto_mapping: true
         mappings:
-            App\Orders\Domain:
-                type: attribute
+            App\Orders\Domain\Model:
+                type: xml
                 is_bundle: false
-                dir: '%kernel.project_dir%/src/Orders/Domain'
-                prefix: 'App\Orders\Domain'
+                dir: '%kernel.project_dir%/src/Orders/Infrastructure/Persistence/Mapping'
+                prefix: 'App\Orders\Domain\Model'
                 alias: Domain
 
 when@test:

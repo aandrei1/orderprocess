@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+    <entity name="App\Orders\Domain\Model\Order" table="orders">
+        <id name="id" type="order_id" length="36" column="id"/>
+        <field name="status" type="string" length="20" column="status" enum-type="App\Orders\Domain\Model\ValueObject\OrderStatus"/>
+        <field name="placedAt" type="datetime_immutable" column="placed_at"/>
+        <field name="paidAt" type="datetime_immutable" column="paid_at" nullable="true"/>
+        <field name="customerId" type="customer_id" column="customer_id"/>
+        <one-to-many field="items" target-entity="App\Orders\Domain\Model\OrderItem" mapped-by="order" orphan-removal="true">
+            <cascade>
+                <cascade-persist/>
+                <cascade-remove/>
+            </cascade>
+        </one-to-many>
+    </entity>
+</doctrine-mapping>

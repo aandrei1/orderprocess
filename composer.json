@@ -7,10 +7,11 @@
         "php": ">=8.4",
         "ext-ctype": "*",
         "ext-iconv": "*",
-        "doctrine/doctrine-bundle": "^3.2",
-        "doctrine/doctrine-migrations-bundle": "^4.0",
-        "doctrine/orm": "^3.6",
+        "doctrine/doctrine-bundle": "^3.3.2",
+        "doctrine/doctrine-migrations-bundle": "^4.0.1",
+        "doctrine/orm": "^3.7",
         "php-amqplib/php-amqplib": "^3.2",
+        "ramsey/uuid": "^4.9",
         "symfony/console": "8.1.*",
         "symfony/dotenv": "8.1.*",
         "symfony/flex": "^2",
@@ -80,9 +81,9 @@
         }
     },
     "require-dev": {
-        "friendsofphp/php-cs-fixer": "^3.95",
-        "phpstan/phpstan": "^2.2",
+        "friendsofphp/php-cs-fixer": "^3.95.25",
+        "phpstan/phpstan": "^2.2.13",
         "phpstan/phpstan-symfony": "^2.0",
-        "phpunit/phpunit": "^13.3"
+        "phpunit/phpunit": "^13.3.3"
     }
 }

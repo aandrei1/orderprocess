@@ -16,3 +16,10 @@ parameters:
         -
             message: '#Method App\\Kernel::getAllowedEnvs\(\) is unused#'
             path: src/Kernel.php
+        # Doctrine hydrates these properties via reflection
+        -
+            message: '#Property App\\Orders\\Domain\\Model\\OrderItem::\$id#'
+            path: src/Orders/Domain/Model/OrderItem.php
+        -
+            message: '#Property App\\Orders\\Domain\\Model\\OrderItem::\$order#'
+            path: src/Orders/Domain/Model/OrderItem.php

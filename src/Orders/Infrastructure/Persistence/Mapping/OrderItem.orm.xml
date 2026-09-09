@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+    <entity name="App\Orders\Domain\Model\OrderItem" table="order_items">
+        <id name="id" type="integer" column="id">
+            <generator strategy="AUTO"/>
+        </id>
+        <field name="productId" type="product_id" column="product_id"/>
+        <field name="quantity" type="quantity" column="quantity_value"/>
+        <field name="unitPrice" type="money" column="unit_price_amount"/>
+        <many-to-one field="order" target-entity="App\Orders\Domain\Model\Order" inversed-by="items">
+            <join-column name="order_id" referenced-column-name="id" on-delete="CASCADE"/>
+        </many-to-one>
+    </entity>
+</doctrine-mapping>
