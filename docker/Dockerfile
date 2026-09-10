@@ -10,17 +10,23 @@ RUN apk add --no-cache \
     postgresql-dev \
     linux-headers
 
-# PHP extensions for PostgreSQL + AMQP
-RUN docker-php-ext-install pdo_pgsql
+# PHP extensions for PostgreSQL + AMQP (php-amqplib needs ext-sockets)
+RUN docker-php-ext-install pdo_pgsql sockets
+
+COPY composer.json composer.lock ./
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+# Install PHP dependencies (learning project: keep dev tools like PHPUnit)
+RUN composer install \
+    --no-dev \
+    --no-scripts \
+    --no-autoloader \
+    --prefer-dist
+    
 # Copy project files
 COPY . .
-
-# Install PHP dependencies
-RUN composer install --no-interaction --optimize-autoloader --no-dev
 
 EXPOSE 8000
 

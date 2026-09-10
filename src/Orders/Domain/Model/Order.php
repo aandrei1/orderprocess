@@ -80,6 +80,7 @@ final class Order
         $this->recordEvent(new OrderPaid($this->id, $this->total(), $occurredAt));
     }
 
+
     public function cancel(string $reason, \DateTimeImmutable $occurredAt): void
     {
         if (OrderStatus::PAID === $this->status) {
