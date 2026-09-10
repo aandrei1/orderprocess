@@ -16,6 +16,9 @@ final class Product
     /** @var list<DomainEvent> */
     private array $domainEvents = [];
 
+    /** @var int Managed by Doctrine for optimistic locking. */
+    private int $version = 1;
+
     public function __construct(
         private readonly ProductId $id,
         private readonly string $name,
@@ -85,6 +88,11 @@ final class Product
     public function minThreshold(): int
     {
         return $this->minThreshold;
+    }
+
+    public function version(): int
+    {
+        return $this->version;
     }
 
     /**

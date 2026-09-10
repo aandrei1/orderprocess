@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Orders\Application\Command;
 
 use App\Orders\Application\Port\DomainEventDispatcher;
+use App\Orders\Application\Port\TransactionManager;
 use App\Orders\Domain\Model\Order;
 use App\Orders\Domain\Model\OrderItem;
 use App\Orders\Domain\Model\ValueObject\OrderId;
@@ -21,62 +22,65 @@ final class PlaceOrderHandler
         private readonly ProductRepository $productRepository,
         private readonly PaymentGateway $paymentGateway,
         private readonly DomainEventDispatcher $eventDispatcher,
+        private readonly TransactionManager $transactionManager,
     ) {
     }
 
     public function __invoke(PlaceOrder $command): OrderId
     {
-        $occurredAt = new \DateTimeImmutable();
-        $items = [];
-        $products = [];
+        return $this->transactionManager->transactional(function () use ($command): OrderId {
+            $occurredAt = new \DateTimeImmutable();
+            $items = [];
+            $products = [];
 
-        // 1. Verificare stoc + decrement (atomic, în aceeași tranzacție)
-        foreach ($command->items() as $item) {
-            $product = $this->productRepository->findById(ProductId::fromString($item['productId']));
+            // 1. Verificare stoc + decrement
+            foreach ($command->items() as $item) {
+                $product = $this->productRepository->findById(ProductId::fromString($item['productId']));
 
-            if (null === $product) {
-                throw new \DomainException(sprintf('Product %s not found.', $item['productId']));
+                if (null === $product) {
+                    throw new \DomainException(sprintf('Product %s not found.', $item['productId']));
+                }
+
+                $quantity = Quantity::fromInt($item['quantity']);
+                $product->decrementStock($quantity, $occurredAt);
+
+                $items[] = new OrderItem($product->id(), $quantity, $product->price());
+                $products[] = $product;
             }
 
-            $quantity = Quantity::fromInt($item['quantity']);
-            $product->decrementStock($quantity, $occurredAt);
+            // 2. Construire comandă
+            $order = Order::place(
+                OrderId::generate(),
+                $command->customerId(),
+                $items,
+                $occurredAt,
+            );
 
-            $items[] = new OrderItem($product->id(), $quantity, $product->price());
-            $products[] = $product;
-        }
+            // 3. Plată pe loc (mock)
+            if (!$this->paymentGateway->charge($order->total())) {
+                throw new \DomainException('Payment failed.');
+            }
 
-        // 2. Construire comandă
-        $order = Order::place(
-            OrderId::generate(),
-            $command->customerId(),
-            $items,
-            $occurredAt,
-        );
+            $order->markPaid($occurredAt);
 
-        // 3. Plată pe loc (mock)
-        if (!$this->paymentGateway->charge($order->total())) {
-            throw new \DomainException('Payment failed.');
-        }
+            // 4. Salvare (aceeași tranzacție)
+            $this->orderRepository->save($order);
+            foreach ($products as $product) {
+                $this->productRepository->save($product);
+            }
 
-        $order->markPaid($occurredAt);
-
-        // 4. Salvare (aceeași tranzacție)
-        $this->orderRepository->save($order);
-        foreach ($products as $product) {
-            $this->productRepository->save($product);
-        }
-
-        // 5. Dispatch evenimente
-        foreach ($order->releaseEvents() as $event) {
-            $this->eventDispatcher->dispatch($event);
-        }
-
-        foreach ($products as $product) {
-            foreach ($product->releaseEvents() as $event) {
+            // 5. Dispatch evenimente (outbox, aceeași tranzacție)
+            foreach ($order->releaseEvents() as $event) {
                 $this->eventDispatcher->dispatch($event);
             }
-        }
 
-        return $order->id();
+            foreach ($products as $product) {
+                foreach ($product->releaseEvents() as $event) {
+                    $this->eventDispatcher->dispatch($event);
+                }
+            }
+
+            return $order->id();
+        });
     }
 }

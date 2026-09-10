@@ -23,24 +23,24 @@ shell: ## Bash inside the php container
 ## Dependencies
 
 install: ## Install PHP dependencies
-	composer install
+	php composer.phar install
 
 ## Quality gates
 
 test: ## Run all tests (requires DB for integration: make up)
-	composer test
+	php composer.phar test
 
 unit: ## Run unit tests only
-	composer test:unit
+	php composer.phar test:unit
 
 integration: ## Run integration tests only (requires DB: make up)
-	composer test:integration
+	php composer.phar test:integration
 
 phpstan: ## Static analysis
-	composer phpstan
+	php composer.phar phpstan
 
 cs: ## Check code style (dry-run)
-	composer cs-fixer
+	php composer.phar cs-fixer
 
 cs-fix: ## Fix code style
 	composer cs-fixer:fix

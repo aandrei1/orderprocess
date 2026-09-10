@@ -32,10 +32,15 @@ services:
         arguments:
             $entityManager: '@doctrine.orm.entity_manager'
 
+    App\Orders\Infrastructure\Persistence\DoctrineTransactionManager:
+        arguments:
+            $entityManager: '@doctrine.orm.entity_manager'
+
     App\Orders\Domain\Port\OrderRepository: '@App\Orders\Infrastructure\Persistence\DoctrineOrderRepository'
     App\Orders\Domain\Port\ProductRepository: '@App\Orders\Infrastructure\Persistence\DoctrineProductRepository'
     App\Orders\Domain\Port\PaymentGateway: '@App\Orders\Infrastructure\Messaging\MockPaymentGateway'
     App\Orders\Application\Port\DomainEventDispatcher: '@App\Orders\Infrastructure\Messaging\OutboxDomainEventDispatcher'
+    App\Orders\Application\Port\TransactionManager: '@App\Orders\Infrastructure\Persistence\DoctrineTransactionManager'
 
     # Bus aliases
     Symfony\Component\Messenger\MessageBusInterface $commandBus: '@command.bus'

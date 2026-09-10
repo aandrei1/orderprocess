@@ -7,6 +7,7 @@ namespace App\Tests\Unit;
 use App\Orders\Application\Command\PlaceOrder;
 use App\Orders\Application\Command\PlaceOrderHandler;
 use App\Orders\Application\Port\DomainEventDispatcher;
+use App\Orders\Application\Port\TransactionManager;
 use App\Orders\Domain\Event\OrderPaid;
 use App\Orders\Domain\Event\OrderPlaced;
 use App\Orders\Domain\Event\StockBelowThreshold;
@@ -38,6 +39,7 @@ final class PlaceOrderHandlerTest extends TestCase
         ProductRepository $productRepository,
         PaymentGateway $paymentGateway,
         array &$dispatchedEvents,
+        ?TransactionManager $transactionManager = null,
     ): PlaceOrderHandler {
         $orderRepository = $this->createMock(OrderRepository::class);
         $orderRepository->method('save');
@@ -49,12 +51,25 @@ final class PlaceOrderHandlerTest extends TestCase
             },
         );
 
+        $transactionManager ??= $this->createTransactionManager();
+
         return new PlaceOrderHandler(
             $orderRepository,
             $productRepository,
             $paymentGateway,
             $dispatcher,
+            $transactionManager,
         );
+    }
+
+    private function createTransactionManager(): TransactionManager
+    {
+        $transactionManager = $this->createStub(TransactionManager::class);
+        $transactionManager->method('transactional')->willReturnCallback(
+            static fn (callable $operation): mixed => $operation(),
+        );
+
+        return $transactionManager;
     }
 
     public function testPlaceOrderSuccess(): void
@@ -165,5 +180,31 @@ final class PlaceOrderHandlerTest extends TestCase
             CustomerId::fromString('33333333-3333-3333-3333-333333333333'),
             [['productId' => self::PRODUCT_ID, 'quantity' => 2]],
         ));
+    }
+
+    public function testPlaceOrderRunsWithinTransaction(): void
+    {
+        $product = $this->createProduct(10, 3);
+
+        $productRepository = $this->createMock(ProductRepository::class);
+        $productRepository->method('findById')->willReturn($product);
+
+        $paymentGateway = $this->createMock(PaymentGateway::class);
+        $paymentGateway->method('charge')->willReturn(true);
+
+        $transactionManager = $this->createMock(TransactionManager::class);
+        $transactionManager->expects(self::once())->method('transactional')->willReturnCallback(
+            static fn (callable $operation): mixed => $operation(),
+        );
+
+        $dispatchedEvents = [];
+        $handler = $this->createHandler($productRepository, $paymentGateway, $dispatchedEvents, $transactionManager);
+
+        $orderId = $handler(new PlaceOrder(
+            CustomerId::fromString('33333333-3333-3333-3333-333333333333'),
+            [['productId' => self::PRODUCT_ID, 'quantity' => 2]],
+        ));
+
+        self::assertNotNull($orderId);
     }
 }
