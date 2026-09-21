@@ -1,4 +1,4 @@
-.PHONY: help build up down logs shell install test unit integration phpstan cs cs-fix migrate migrate-dry consume consume-failed cache-clear cc check console composer seed-products seed-orders
+.PHONY: help build up down logs shell install test unit test-db integration phpstan cs cs-fix migrate migrate-dry consume consume-failed cache-clear cc check console composer seed-products seed-orders
 
 # Load .env so targets can use its variables (APP_ENV, DATABASE_URL, ...).
 # Real environment variables still win over these.
@@ -44,7 +44,11 @@ test: ## Run all tests (requires DB for integration: make up)
 unit: ## Run unit tests only
 	$(COMPOSER) test:unit
 
-integration: ## Run integration tests only (requires DB: make up)
+test-db: ## Create the order_test database and migrate it (run once, then on new migrations)
+	$(CONSOLE) doctrine:database:create --env=test --if-not-exists
+	$(CONSOLE) doctrine:migrations:migrate --env=test --no-interaction
+
+integration: test-db ## Run integration tests only (requires DB: make up)
 	$(COMPOSER) test:integration
 
 phpstan: ## Static analysis

@@ -236,7 +236,8 @@ make console c="dbal:run-sql \"TRUNCATE order_items, orders, outbox\""
 
 ```bash
 make unit          # composer test:unit    — unit tests (tests/Unit)
-make integration   # composer test:integration — requires the DB running
+make test-db       # create + migrate the order_test database
+make integration   # composer test:integration — runs make test-db first
 make test          # the whole suite
 make phpstan       # static analysis, level 6
 make cs            # style check (dry-run)
@@ -244,7 +245,13 @@ make cs-fix        # apply style fixes
 make check         # pre-commit gate: unit + phpstan + cs
 ```
 
-Existing unit tests: `MoneyTest`, `QuantityTest`, `OrderTest`, `ProductTest`, `PlaceOrderHandlerTest`, `OutboxDomainEventDispatcherTest`.
+**Unit tests** (`tests/Unit`, ports mocked, no I/O): `MoneyTest`, `QuantityTest`, `OrderTest`, `ProductTest`, `PlaceOrderHandlerTest`, `OutboxDomainEventDispatcherTest`.
+
+**Integration tests** (`tests/Integration`, real PostgreSQL): `PlaceOrderHandlerTest` runs the whole use case against the `order_test` database — asserting the order, its lines, the decremented stock, the bumped optimistic-locking version and the outbox rows; that an insufficient-stock failure rolls back *everything*, including a product already decremented on an earlier line; and that an order can be hydrated back from the database. `make integration` creates and migrates `order_test` on its own, so a fresh clone needs no manual setup.
+
+The split matters: mocked ports cannot catch anything that only breaks once Doctrine is real — custom DBAL types on identifiers, identity-map hashing, collection hydration, actual transaction boundaries. Those are exactly the failures the integration suite exists for.
+
+> **Note on the test environment:** `phpunit.dist.xml` sets `APP_ENV=test` as both `<server>` and `<env>`. The `<env>` line is required, not redundant — `KernelTestCase` reads `$_ENV['APP_ENV']` *before* `$_SERVER['APP_ENV']`, and `docker-compose.yml` injects a real `APP_ENV=dev` into the php container. Without it the integration tests boot in dev and run against the **dev** database, which they truncate in `setUp()`.
 
 PHPUnit runs with `failOnDeprecation`, `failOnNotice`, and `failOnWarning` enabled — any deprecation is an error.
 
@@ -258,5 +265,4 @@ The project is under construction; what is **not** yet implemented, so there's n
 - **Messenger buses aren't used in the flow yet** — `PlaceOrderCommand` (CLI) calls `PlaceOrderHandler` directly, not through `command.bus`. The `Application\Command\* → async` routing is ready but inactive.
 - **No HTTP layer** — `UI/Controller/` is empty; the only entry point is the CLI.
 - **No Query side** — `query.bus` is configured, but `Application/Query/` doesn't exist yet.
-- **`tests/Integration/` doesn't exist yet**, even though the suite is declared in `phpunit.dist.xml`; `make integration` currently runs nothing.
 - **Payment is a mock** — `MockPaymentGateway` accepts any amount.

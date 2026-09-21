@@ -15,6 +15,14 @@
         <ini name="error_reporting" value="-1" />
         <server name="APP_ENV" value="test" force="true" />
         <server name="SHELL_VERBOSITY" value="-1" />
+
+        <!--
+            KernelTestCase reads $_ENV['APP_ENV'] before $_SERVER['APP_ENV'], and
+            docker-compose.yml injects a real APP_ENV=dev into the php container.
+            Without this <env>, integration tests boot the kernel in dev and run
+            against the DEV database instead of order_test.
+        -->
+        <env name="APP_ENV" value="test" force="true" />
     </php>
 
     <testsuites>
