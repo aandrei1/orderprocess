@@ -1,0 +1,102 @@
+{
+    // Scheletele pornesc deja cu declare(strict_types=1), ca să nu fie scrisă de mână.
+    // Într-un fișier PHP gol: tastează prefixul (ex. "class") și apasă Tab.
+    "PHP: antet strict": {
+        "scope": "php",
+        "prefix": "strict",
+        "body": [
+            "<?php",
+            "",
+            "declare(strict_types=1);",
+            "",
+            "$0"
+        ],
+        "description": "Doar antetul: <?php + declare(strict_types=1)"
+    },
+    "PHP: clasă finală": {
+        "scope": "php",
+        "prefix": "class",
+        "body": [
+            "<?php",
+            "",
+            "declare(strict_types=1);",
+            "",
+            "namespace App\\\\Orders\\\\${1|Domain\\\\Model,Domain\\\\Event,Domain\\\\Port,Application\\\\Command,Application\\\\Port,Infrastructure\\\\Persistence,Infrastructure\\\\Messaging,UI\\\\Command,UI\\\\Controller|};",
+            "",
+            "final class ${TM_FILENAME_BASE}",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ],
+        "description": "Clasă finală cu declare + namespace ales din lista contextului Orders"
+    },
+    "PHP: interfață (port)": {
+        "scope": "php",
+        "prefix": "interface",
+        "body": [
+            "<?php",
+            "",
+            "declare(strict_types=1);",
+            "",
+            "namespace App\\\\Orders\\\\${1|Domain\\\\Port,Application\\\\Port|};",
+            "",
+            "interface ${TM_FILENAME_BASE}",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ],
+        "description": "Interfață de port, cu declare + namespace"
+    },
+    "PHP: eveniment de domeniu": {
+        "scope": "php",
+        "prefix": "event",
+        "body": [
+            "<?php",
+            "",
+            "declare(strict_types=1);",
+            "",
+            "namespace App\\\\Orders\\\\Domain\\\\Event;",
+            "",
+            "final class ${TM_FILENAME_BASE} implements DomainEvent",
+            "{",
+            "\tpublic function __construct(",
+            "\t\tprivate readonly $1,",
+            "\t\tprivate readonly \\\\DateTimeImmutable \\$occurredAt,",
+            "\t) {",
+            "\t}",
+            "",
+            "\tpublic function occurredAt(): \\\\DateTimeImmutable",
+            "\t{",
+            "\t\treturn \\$this->occurredAt;",
+            "\t}",
+            "}",
+            ""
+        ],
+        "description": "Eveniment de domeniu (nume la trecut), cu occurredAt"
+    },
+    "PHP: test unitar": {
+        "scope": "php",
+        "prefix": "test",
+        "body": [
+            "<?php",
+            "",
+            "declare(strict_types=1);",
+            "",
+            "namespace App\\\\Tests\\\\Unit;",
+            "",
+            "use PHPUnit\\\\Framework\\\\TestCase;",
+            "",
+            "final class ${TM_FILENAME_BASE} extends TestCase",
+            "{",
+            "\tpublic function test$1(): void",
+            "\t{",
+            "\t\t$0",
+            "\t}",
+            "}",
+            ""
+        ],
+        "description": "Clasă de test PHPUnit cu declare + namespace"
+    }
+}

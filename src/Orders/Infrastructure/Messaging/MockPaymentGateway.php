@@ -11,7 +11,7 @@ final class MockPaymentGateway implements PaymentGateway
 {
     public function charge(Money $amount): bool
     {
-        // Mock: acceptă orice plată.
+        // Mock: accepts any payment.
         return true;
     }
 }

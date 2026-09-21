@@ -33,7 +33,7 @@ final class PlaceOrderHandler
             $items = [];
             $products = [];
 
-            // 1. Verificare stoc + decrement
+            // 1. Check stock + decrement
             foreach ($command->items() as $item) {
                 $product = $this->productRepository->findById(ProductId::fromString($item['productId']));
 
@@ -48,7 +48,7 @@ final class PlaceOrderHandler
                 $products[] = $product;
             }
 
-            // 2. Construire comandă
+            // 2. Build the order
             $order = Order::place(
                 OrderId::generate(),
                 $command->customerId(),
@@ -56,20 +56,20 @@ final class PlaceOrderHandler
                 $occurredAt,
             );
 
-            // 3. Plată pe loc (mock)
+            // 3. Charge on the spot (mock)
             if (!$this->paymentGateway->charge($order->total())) {
                 throw new \DomainException('Payment failed.');
             }
 
             $order->markPaid($occurredAt);
 
-            // 4. Salvare (aceeași tranzacție)
+            // 4. Save (same transaction)
             $this->orderRepository->save($order);
             foreach ($products as $product) {
                 $this->productRepository->save($product);
             }
 
-            // 5. Dispatch evenimente (outbox, aceeași tranzacție)
+            // 5. Dispatch events (outbox, same transaction)
             foreach ($order->releaseEvents() as $event) {
                 $this->eventDispatcher->dispatch($event);
             }

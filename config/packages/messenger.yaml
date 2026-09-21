@@ -24,11 +24,12 @@ framework:
             'App\Orders\Application\Query\*': sync
 
         buses:
-            # Fără doctrine_transaction: granița tranzacției se declară explicit în
-            # handler, prin portul TransactionManager. Un singur loc care o definește,
-            # vizibil în cod și independent de configurația bus-ului — altfel
-            # atomicitatea ar depinde de calea pe care ajunge comanda la handler
-            # (bus vs. apel direct din UI/Command).
+            # No doctrine_transaction: the transaction boundary is declared
+            # explicitly in the handler, via the TransactionManager port. A
+            # single place defines it, visible in the code and independent of
+            # bus configuration — otherwise atomicity would depend on the path
+            # the command takes to reach the handler (bus vs. direct call from
+            # UI/Command).
             command.bus: ~
             query.bus:
                 middleware:

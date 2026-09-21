@@ -13,7 +13,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-#[AsCommand(name: 'app:place-order', description: 'Plasează o comandă pentru un client.')]
+#[AsCommand(name: 'app:place-order', description: 'Places an order for a customer.')]
 final class PlaceOrderCommand extends Command
 {
     public function __construct(private readonly PlaceOrderHandler $handler)
@@ -24,8 +24,8 @@ final class PlaceOrderCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addArgument('customerId', InputArgument::REQUIRED, 'ID-ul clientului')
-            ->addArgument('items', InputArgument::REQUIRED | InputArgument::IS_ARRAY, 'Elemente: productId:quantity (ex: prod-1:2 prod-2:1)');
+            ->addArgument('customerId', InputArgument::REQUIRED, 'The customer ID')
+            ->addArgument('items', InputArgument::REQUIRED | InputArgument::IS_ARRAY, 'Items: productId:quantity (e.g. prod-1:2 prod-2:1)');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -42,7 +42,7 @@ final class PlaceOrderCommand extends Command
             $items,
         ));
 
-        $output->writeln(sprintf('Comanda %s a fost plasată.', $orderId->toString()));
+        $output->writeln(sprintf('Order %s has been placed.', $orderId->toString()));
 
         return Command::SUCCESS;
     }

@@ -7,7 +7,7 @@ namespace App\Orders\Domain\Model\ValueObject;
 use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
 
-final class ProductId
+final class ProductId implements \Stringable
 {
     private function __construct(private readonly UuidInterface $uuid)
     {
@@ -26,6 +26,12 @@ final class ProductId
     public function toString(): string
     {
         return $this->uuid->toString();
+    }
+
+    /** Doctrine builds the identity map key via a cast to string. */
+    public function __toString(): string
+    {
+        return $this->toString();
     }
 
     public function equals(self $other): bool

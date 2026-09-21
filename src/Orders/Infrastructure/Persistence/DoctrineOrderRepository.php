@@ -23,6 +23,8 @@ final class DoctrineOrderRepository implements OrderRepository
 
     public function findById(OrderId $id): ?Order
     {
-        return $this->entityManager->find(Order::class, $id->toString());
+        // See DoctrineProductRepository: the identifier is passed as a value
+        // object, the order_id DBAL type does the conversion.
+        return $this->entityManager->find(Order::class, $id);
     }
 }

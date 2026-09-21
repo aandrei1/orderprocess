@@ -1,3 +1,27 @@
 {
-    "makefile.configureOnOpen": false
+    "makefile.configureOnOpen": false,
+
+    // --- PHP CS Fixer ---
+    // Necesită extensia "junstyle.php-cs-fixer".
+    // Formatează la salvare cu regulile din .php-cs-fixer.dist.php, deci
+    // declare(strict_types=1) ajunge singur în orice fișier PHP nou.
+    // Binarul rulează pe host (PHP 8.4), nu în container — vendor/ e montat, deci e același.
+    "php-cs-fixer.executablePath": "${workspaceFolder}/vendor/bin/php-cs-fixer",
+    "php-cs-fixer.config": ".php-cs-fixer.dist.php",
+    // declare_strict_types e o regulă "risky"; configul are deja setRiskyAllowed(true),
+    // asta e doar ca extensia să nu o filtreze înainte să ajungă la fixer.
+    "php-cs-fixer.allowRisky": true,
+    // Gol intenționat: regulile vin din fișierul de config, nu din setări.
+    "php-cs-fixer.rules": "",
+    "php-cs-fixer.formatHtml": false,
+    "php-cs-fixer.documentFormattingProvider": true,
+
+    "[php]": {
+        "editor.defaultFormatter": "junstyle.php-cs-fixer",
+        "editor.formatOnSave": true
+    },
+
+    "files.associations": {
+        "*.orm.xml": "xml"
+    }
 }

@@ -12,11 +12,20 @@ use App\Orders\Domain\Model\ValueObject\CustomerId;
 use App\Orders\Domain\Model\ValueObject\Money;
 use App\Orders\Domain\Model\ValueObject\OrderId;
 use App\Orders\Domain\Model\ValueObject\OrderStatus;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 
 final class Order
 {
-    /** @var list<OrderItem> */
-    private array $items = [];
+    /**
+     * Collection, not array: the one-to-many mapping hydrates a
+     * PersistentCollection, which cannot be assigned to an `array`-typed
+     * property. Collection is a framework-agnostic interface — see agents.md,
+     * Design rules section.
+     *
+     * @var Collection<int, OrderItem>
+     */
+    private Collection $items;
 
     /** @var list<DomainEvent> */
     private array $domainEvents = [];
@@ -28,6 +37,7 @@ final class Order
         private readonly \DateTimeImmutable $placedAt,
         private ?\DateTimeImmutable $paidAt = null,
     ) {
+        $this->items = new ArrayCollection();
     }
 
     /**
@@ -65,7 +75,7 @@ final class Order
         }
 
         $item->setOrder($this);
-        $this->items[] = $item;
+        $this->items->add($item);
     }
 
     public function markPaid(\DateTimeImmutable $occurredAt): void
@@ -79,7 +89,6 @@ final class Order
 
         $this->recordEvent(new OrderPaid($this->id, $this->total(), $occurredAt));
     }
-
 
     public function cancel(string $reason, \DateTimeImmutable $occurredAt): void
     {
@@ -133,11 +142,14 @@ final class Order
     }
 
     /**
+     * The collection stays an internal detail: callers get back an array, so
+     * they never depend on the type used for persistence.
+     *
      * @return list<OrderItem>
      */
     public function items(): array
     {
-        return $this->items;
+        return array_values($this->items->toArray());
     }
 
     /**

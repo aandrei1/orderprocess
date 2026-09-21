@@ -23,6 +23,9 @@ final class DoctrineProductRepository implements ProductRepository
 
     public function findById(ProductId $id): ?Product
     {
-        return $this->entityManager->find(Product::class, $id->toString());
+        // The identifier is passed as a value object: the product_id DBAL type
+        // does the conversion to string. With $id->toString() here, ProductIdType
+        // would already receive a string and throw ConversionException.
+        return $this->entityManager->find(Product::class, $id);
     }
 }
