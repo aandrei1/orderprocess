@@ -8,7 +8,8 @@ RUN apk add --no-cache \
     unzip \
     curl \
     postgresql-dev \
-    linux-headers
+    linux-headers \
+    bash
 
 # PHP extensions for PostgreSQL + AMQP (php-amqplib needs ext-sockets)
 RUN docker-php-ext-install pdo_pgsql sockets
@@ -24,7 +25,7 @@ RUN composer install \
     --no-scripts \
     --no-autoloader \
     --prefer-dist
-    
+
 # Copy project files
 COPY . .
 

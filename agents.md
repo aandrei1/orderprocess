@@ -38,6 +38,7 @@ Dependencies flow inwards. Domain never imports from Application, Infrastructure
 
 - Buses: `command.bus` (default, routed `async`), `query.bus` (`sync`), `event.bus` (allow_no_handlers). Failure transport `failed`: 3 retries, backoff ×2, cap 10s.
 - Every consumer must be idempotent (same message 2× is expected). Deduplicate via message_id.
+- `command.bus` carries NO `doctrine_transaction` middleware by design. A handler that performs more than one write opens its own transaction via the `TransactionManager` port — the boundary stays visible in the use case and independent of how the command reached the handler (bus or direct call from `UI/Command/`). There is no bus-level safety net.
 - Outbox pattern when an action must be atomic with a published event: write to the `outbox` table in the same DB transaction; a separate worker publishes (see `OutboxDomainEventDispatcher`).
 - Message payload = contract; backward-compatible changes (add fields, don't rename/delete).
 - Log message_id + correlation_id on consumption.

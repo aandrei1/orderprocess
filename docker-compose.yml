@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    container_name: order-process-php
+    container_name: op-php
     ports:
       - "8000:8000"
     environment:
@@ -17,7 +17,7 @@ services:
 
   rabbitmq:
     image: rabbitmq:4-management-alpine
-    container_name: order-process-rabbitmq
+    container_name: op-rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -29,7 +29,7 @@ services:
 
   postgres:
     image: postgres:16-alpine
-    container_name: order-process-postgres
+    container_name: op-postgres
     ports:
       - "5432:5432"
     environment:
