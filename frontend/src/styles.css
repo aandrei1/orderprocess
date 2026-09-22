@@ -1,0 +1,300 @@
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --border: #d9dde3;
+  --text: #1b1f24;
+  --muted: #666e79;
+  --accent: #2f6feb;
+  --danger: #c0392b;
+  --ok: #1e7a45;
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14171b;
+    --surface: #1c2026;
+    --border: #2e343d;
+    --text: #e6e9ee;
+    --muted: #98a1ad;
+    --accent: #5b8def;
+    --danger: #e26d5c;
+    --ok: #4cb782;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.app {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+
+h1 {
+  font-size: 22px;
+  margin: 0 0 16px;
+}
+
+nav {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+/* Rendered by NavLink as an <a>, so it cannot inherit the button rules. */
+.tab {
+  display: inline-block;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.tab:hover {
+  border-color: var(--accent);
+}
+
+.tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+button {
+  font: inherit;
+  padding: 7px 14px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button[type='submit'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+button.ghost {
+  border-color: transparent;
+  color: var(--muted);
+  padding: 7px 10px;
+}
+
+input,
+select {
+  font: inherit;
+  padding: 7px 9px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  min-width: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field > span {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.field input {
+  flex: 1;
+}
+
+small,
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+fieldset {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+}
+
+legend {
+  font-weight: 600;
+  font-size: 13px;
+  padding: 0 6px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.line select {
+  flex: 1;
+}
+
+.line input[type='number'] {
+  width: 80px;
+}
+
+.subtotal {
+  min-width: 110px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.total {
+  justify-content: space-between;
+}
+
+.pager {
+  justify-content: flex-end;
+}
+
+.error {
+  color: var(--danger);
+  margin: 0;
+}
+
+.success {
+  border: 1px solid var(--ok);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.success p {
+  margin: 0 0 8px;
+}
+
+.success dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.success dt {
+  color: var(--muted);
+}
+
+.success dd {
+  margin: 0;
+}
+
+.success a {
+  display: inline-block;
+  margin-top: 10px;
+  color: var(--accent);
+  font-size: 14px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+
+.items {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+}
+
+.status-paid {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
+.status-cancelled {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+@media (max-width: 640px) {
+  .line {
+    flex-wrap: wrap;
+  }
+
+  .line select {
+    flex-basis: 100%;
+  }
+
+  .subtotal {
+    min-width: 0;
+    flex: 1;
+  }
+}

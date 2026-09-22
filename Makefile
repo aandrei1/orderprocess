@@ -1,4 +1,4 @@
-.PHONY: help build up down logs shell install test unit test-db integration phpstan cs cs-fix migrate migrate-dry consume consume-failed cache-clear cc check console composer seed-products seed-orders
+.PHONY: help build up down logs shell install test unit test-db integration phpstan cs cs-fix migrate migrate-dry consume consume-failed cache-clear cc check console composer seed-products seed-orders ui ui-install ui-build ui-check ui-preview
 
 # Load .env so targets can use its variables (APP_ENV, DATABASE_URL, ...).
 # Real environment variables still win over these.
@@ -75,6 +75,23 @@ consume: ## Consume the async messenger queue (ctrl-c to stop)
 
 consume-failed: ## Drain the failed queue
 	$(CONSOLE) messenger:consume failed -vv
+
+## Frontend (runs on the host, not in the php container: node is not installed there)
+
+ui-install: ## Install frontend dependencies
+	cd frontend && npm install
+
+ui: ## Start the frontend dev server on :5173 (proxies /api to :8000, so `make up` first)
+	cd frontend && npm run dev
+
+ui-build: ## Build the frontend into frontend/dist
+	cd frontend && npm run build
+
+ui-preview: ## Serve the built frontend/dist on :4173 (run ui-build first)
+	cd frontend && npm run preview
+
+ui-check: ## Type-check the frontend without emitting
+	cd frontend && npm run typecheck
 
 ## Seed data (dev only)
 

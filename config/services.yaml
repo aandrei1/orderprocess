@@ -36,11 +36,22 @@ services:
         arguments:
             $entityManager: '@doctrine.orm.entity_manager'
 
+    # Read side: raw DBAL, no ORM — see DoctrineOrderReadModel.
+    App\Orders\Infrastructure\Persistence\DoctrineOrderReadModel:
+        arguments:
+            $connection: '@doctrine.dbal.default_connection'
+
+    App\Orders\Infrastructure\Persistence\DoctrineProductReadModel:
+        arguments:
+            $connection: '@doctrine.dbal.default_connection'
+
     App\Orders\Domain\Port\OrderRepository: '@App\Orders\Infrastructure\Persistence\DoctrineOrderRepository'
     App\Orders\Domain\Port\ProductRepository: '@App\Orders\Infrastructure\Persistence\DoctrineProductRepository'
     App\Orders\Domain\Port\PaymentGateway: '@App\Orders\Infrastructure\Messaging\MockPaymentGateway'
     App\Orders\Application\Port\DomainEventDispatcher: '@App\Orders\Infrastructure\Messaging\OutboxDomainEventDispatcher'
     App\Orders\Application\Port\TransactionManager: '@App\Orders\Infrastructure\Persistence\DoctrineTransactionManager'
+    App\Orders\Application\Port\OrderReadModel: '@App\Orders\Infrastructure\Persistence\DoctrineOrderReadModel'
+    App\Orders\Application\Port\ProductReadModel: '@App\Orders\Infrastructure\Persistence\DoctrineProductReadModel'
 
     # Bus aliases
     Symfony\Component\Messenger\MessageBusInterface $commandBus: '@command.bus'

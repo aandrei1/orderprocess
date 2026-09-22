@@ -14,6 +14,8 @@ The project is structured after DDD / hexagonal architecture principles: the dom
 - [Domain model](#domain-model)
 - [Persistence](#persistence)
 - [Messaging and outbox](#messaging-and-outbox)
+- [HTTP API](#http-api)
+- [Web interface](#web-interface)
 - [Setup and startup](#setup-and-startup)
 - [Available commands](#available-commands)
 - [Manually testing the flow](#manually-testing-the-flow)
@@ -134,6 +136,57 @@ Baseline rule for any consumer added: **idempotency** — the same message deliv
 
 Consequence for new code: **any handler that performs more than one write opens its own transaction** with `TransactionManager::transactional()`. There is no bus-level safety net.
 
+## HTTP API
+
+A small JSON API in `src/Orders/UI/Controller/`, served by the `php` container on port 8000. Reads go through `query.bus` (sync); the write injects `PlaceOrderHandler` directly, exactly as `UI/Command/PlaceOrderCommand` does — `PlaceOrder` is routed `async`, but the UI needs the resulting status inside the same request, and the handler's own transaction boundary applies either way.
+
+| Endpoint | Description |
+|---|---|
+| `GET /api/products?limit=50` | catalog entries with stock left (capped at 200) |
+| `POST /api/orders` | place an order; returns the final order, already paid |
+| `GET /api/orders?page=1&perPage=20` | paginated orders, newest first (`perPage` capped at 100) |
+| `GET /api/orders/{id}` | a single order |
+
+All amounts are integers in bani (RON cents), like `Money` on the PHP side.
+
+```bash
+curl -X POST localhost:8000/api/orders -H 'Content-Type: application/json' -d '{
+  "customerId": "11111111-1111-4111-8111-111111111111",
+  "items": [{"productId": "<uuid>", "quantity": 2}]
+}'
+```
+
+```json
+{"id":"...","status":"paid","total":24170,"currency":"RON","items":[...]}
+```
+
+Status codes the frontend branches on: `201` placed, `400` malformed payload, `409` the domain refused it (insufficient stock, unknown product, refused payment), `404` unknown order.
+
+The listing is served by a read model (`Application/Port/OrderReadModel`, implemented over raw DBAL in `Infrastructure/Persistence/DoctrineOrderReadModel`) — no ORM hydration, one query for the page plus one for all its lines, and an index matching the `placed_at DESC, id DESC` ordering.
+
+## Web interface
+
+`frontend/` — Vite + React + TypeScript, two pages: a form that places an order and shows its status, and a table of existing orders. Roughly 400 lines, no state library; `src/api.ts` mirrors the API contract as types.
+
+| Route | Page |
+|---|---|
+| `/` | place an order — pick products, see the status returned by the API |
+| `/orders` | existing orders, paginated, newest first |
+
+Routing is `react-router` (the only runtime dependency beyond React), so back/forward work and both pages can be linked to. Leaving a route unmounts its page, which is why the order list refetches on every visit instead of caching. Unknown paths redirect to `/`.
+
+```bash
+make up           # the API must be running on :8000
+make ui-install   # once
+make ui           # dev server on http://localhost:5173
+```
+
+The dev server proxies `/api` to `localhost:8000` (see `frontend/vite.config.ts`), so the browser stays on a single origin and the backend needs no CORS configuration. Node runs on the host, not in the `php` container.
+
+`make ui-build` produces a static bundle in `frontend/dist`; `make ui-preview` serves that bundle on **http://localhost:4173** (`vite preview` — build first, this does not watch for changes); `make ui-check` type-checks without emitting.
+
+`:5173` (dev) and `:4173` (preview) each have their own `/api` proxy in `vite.config.ts` — Vite does not share it between the two — and both fall back to `index.html`, so a reload on `/orders` works. Serving `dist/` from any other web server needs that same fallback configured, or deep links return 404.
+
 ## Setup and startup
 
 Requirements: Docker + Docker Compose. Everything PHP runs inside the `php` container.
@@ -179,6 +232,8 @@ All Makefile targets run inside the `php` container; `make help` lists them.
 | `make consume` | consume the `async` queue (`messenger:consume async -vv`) |
 | `make consume-failed` | drain the `failed` queue |
 | `make cache-clear` (`make cc`) | clear the Symfony cache |
+| `make ui-install` / `make ui` | install / run the frontend dev server (on the host) |
+| `make ui-build` / `make ui-check` | build / type-check the frontend |
 
 The application command:
 
