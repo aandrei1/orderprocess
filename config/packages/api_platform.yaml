@@ -1,0 +1,31 @@
+api_platform:
+    title: Order Process API
+    version: 1.0.0
+
+    # API resources are UI-layer DTOs, one directory per bounded context. Domain
+    # entities never carry #[ApiResource]: mapping attributes are forbidden in
+    # Domain/ (see AGENTS.md).
+    mapping:
+        paths:
+            - '%kernel.project_dir%/src/Orders/UI/Api/Resource'
+
+    # Providers and processors go through the query bus / command handlers, never
+    # straight to Doctrine, so the ORM integration (and api-platform/doctrine-orm)
+    # stays off even though DoctrineBundle is installed.
+    doctrine:
+        enabled: false
+
+    exception_to_status:
+        # Defaults, restated: setting this key replaces the whole list.
+        Symfony\Component\Serializer\Exception\ExceptionInterface: 400
+        ApiPlatform\Metadata\Exception\InvalidArgumentException: 400
+        Doctrine\ORM\OptimisticLockException: 409
+        Doctrine\DBAL\Exception\UniqueConstraintViolationException: 422
+        # The request was well formed but the domain refused it: insufficient
+        # stock, unknown product, refused payment.
+        DomainException: 409
+
+    defaults:
+        stateless: true
+        cache_headers:
+            vary: ['Content-Type', 'Authorization', 'Origin']
