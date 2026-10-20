@@ -14,6 +14,9 @@ RUN apk add --no-cache \
 # PHP extensions for PostgreSQL + AMQP (php-amqplib needs ext-sockets)
 RUN docker-php-ext-install pdo_pgsql sockets
 
+# Dev-only opcache/realpath tuning — see the file for why.
+COPY docker/php/dev.ini /usr/local/etc/php/conf.d/zz-dev.ini
+
 COPY composer.json composer.lock ./
 
 # Install Composer
