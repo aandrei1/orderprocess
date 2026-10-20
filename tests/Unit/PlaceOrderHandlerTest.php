@@ -7,6 +7,7 @@ namespace App\Tests\Unit;
 use App\Orders\Application\Command\PlaceOrder;
 use App\Orders\Application\Command\PlaceOrderHandler;
 use App\Orders\Application\Port\DomainEventDispatcher;
+use App\Orders\Application\Port\OrderLogger;
 use App\Orders\Application\Port\TransactionManager;
 use App\Orders\Domain\Event\OrderPaid;
 use App\Orders\Domain\Event\OrderPlaced;
@@ -43,6 +44,7 @@ final class PlaceOrderHandlerTest extends TestCase
         PaymentGateway $paymentGateway,
         array &$dispatchedEvents,
         ?TransactionManager $transactionManager = null,
+        ?OrderLogger $logger = null,
     ): PlaceOrderHandler {
         $orderRepository = $this->createMock(OrderRepository::class);
         $orderRepository->method('save');
@@ -62,6 +64,7 @@ final class PlaceOrderHandlerTest extends TestCase
             $paymentGateway,
             $dispatcher,
             $transactionManager,
+            $logger ?? $this->createStub(OrderLogger::class),
         );
     }
 
@@ -122,6 +125,51 @@ final class PlaceOrderHandlerTest extends TestCase
 
         $eventClasses = array_map(static fn ($e) => $e::class, $dispatchedEvents);
         self::assertContains(StockBelowThreshold::class, $eventClasses);
+    }
+
+    public function testSuccessfulOrderIsLoggedOnceAfterTheTransaction(): void
+    {
+        $productRepository = $this->createMock(ProductRepository::class);
+        $productRepository->method('findById')->willReturn($this->createProduct(10, 3));
+
+        $paymentGateway = $this->createMock(PaymentGateway::class);
+        $paymentGateway->method('charge')->willReturn(true);
+
+        $logger = $this->createMock(OrderLogger::class);
+        $logger->expects(self::once())->method('orderPlaced');
+        $logger->expects(self::never())->method('orderFailed');
+
+        $dispatchedEvents = [];
+        $handler = $this->createHandler($productRepository, $paymentGateway, $dispatchedEvents, null, $logger);
+
+        $handler(new PlaceOrder(
+            CustomerId::fromString('33333333-3333-3333-3333-333333333333'),
+            [['productId' => self::PRODUCT_ID, 'quantity' => 2]],
+        ));
+    }
+
+    public function testFailedOrderIsLoggedAndTheExceptionIsRethrown(): void
+    {
+        $productRepository = $this->createMock(ProductRepository::class);
+        $productRepository->method('findById')->willReturn($this->createProduct(5, 3));
+
+        $paymentGateway = $this->createMock(PaymentGateway::class);
+
+        $logger = $this->createMock(OrderLogger::class);
+        $logger->expects(self::never())->method('orderPlaced');
+        $logger->expects(self::once())
+            ->method('orderFailed')
+            ->with(self::isInstanceOf(PlaceOrder::class), self::isInstanceOf(InsufficientStock::class));
+
+        $dispatchedEvents = [];
+        $handler = $this->createHandler($productRepository, $paymentGateway, $dispatchedEvents, null, $logger);
+
+        $this->expectException(InsufficientStock::class);
+
+        $handler(new PlaceOrder(
+            CustomerId::fromString('33333333-3333-3333-3333-333333333333'),
+            [['productId' => self::PRODUCT_ID, 'quantity' => 6]],
+        ));
     }
 
     public function testPlaceOrderInsufficientStockThrows(): void

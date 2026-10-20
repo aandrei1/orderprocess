@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Orders\Application\Command;
 
 use App\Orders\Application\Port\DomainEventDispatcher;
+use App\Orders\Application\Port\OrderLogger;
 use App\Orders\Application\Port\TransactionManager;
 use App\Orders\Domain\Exception\PaymentFailed;
 use App\Orders\Domain\Exception\ProductNotFound;
@@ -25,65 +26,88 @@ final class PlaceOrderHandler
         private readonly PaymentGateway $paymentGateway,
         private readonly DomainEventDispatcher $eventDispatcher,
         private readonly TransactionManager $transactionManager,
+        private readonly OrderLogger $logger,
     ) {
     }
 
     public function __invoke(PlaceOrder $command): OrderId
     {
-        return $this->transactionManager->transactional(function () use ($command): OrderId {
-            $occurredAt = new \DateTimeImmutable();
-            $items = [];
-            $products = [];
+        $startedAt = hrtime(true);
 
-            // 1. Check stock + decrement
-            foreach ($command->items() as $item) {
-                $productId = ProductId::fromString($item['productId']);
-                $product = $this->productRepository->findById($productId);
+        // Logged outside the transaction: a line must never describe an order
+        // that was rolled back, so "placed" is written only after the commit.
+        try {
+            $order = $this->transactionManager->transactional(fn (): Order => $this->place($command));
+        } catch (\Throwable $e) {
+            $this->logger->orderFailed($command, $e, $this->elapsedMs($startedAt));
 
-                if (null === $product) {
-                    throw ProductNotFound::withId($productId);
-                }
+            throw $e;
+        }
 
-                $quantity = Quantity::fromInt($item['quantity']);
-                $product->decrementStock($quantity, $occurredAt);
+        $this->logger->orderPlaced($order, $this->elapsedMs($startedAt));
 
-                $items[] = new OrderItem($product->id(), $quantity, $product->price());
-                $products[] = $product;
+        return $order->id();
+    }
+
+    private function place(PlaceOrder $command): Order
+    {
+        $occurredAt = new \DateTimeImmutable();
+        $items = [];
+        $products = [];
+
+        // 1. Check stock + decrement
+        foreach ($command->items() as $item) {
+            $productId = ProductId::fromString($item['productId']);
+            $product = $this->productRepository->findById($productId);
+
+            if (null === $product) {
+                throw ProductNotFound::withId($productId);
             }
 
-            // 2. Build the order
-            $order = Order::place(
-                OrderId::generate(),
-                $command->customerId(),
-                $items,
-                $occurredAt,
-            );
+            $quantity = Quantity::fromInt($item['quantity']);
+            $product->decrementStock($quantity, $occurredAt);
 
-            // 3. Charge on the spot (mock)
-            if (!$this->paymentGateway->charge($order->total())) {
-                throw PaymentFailed::refused();
-            }
+            $items[] = new OrderItem($product->id(), $quantity, $product->price());
+            $products[] = $product;
+        }
 
-            $order->markPaid($occurredAt);
+        // 2. Build the order
+        $order = Order::place(
+            OrderId::generate(),
+            $command->customerId(),
+            $items,
+            $occurredAt,
+        );
 
-            // 4. Save (same transaction)
-            $this->orderRepository->save($order);
-            foreach ($products as $product) {
-                $this->productRepository->save($product);
-            }
+        // 3. Charge on the spot (mock)
+        if (!$this->paymentGateway->charge($order->total())) {
+            throw PaymentFailed::refused();
+        }
 
-            // 5. Dispatch events (outbox, same transaction)
-            foreach ($order->releaseEvents() as $event) {
+        $order->markPaid($occurredAt);
+
+        // 4. Save (same transaction)
+        $this->orderRepository->save($order);
+        foreach ($products as $product) {
+            $this->productRepository->save($product);
+        }
+
+        // 5. Dispatch events (outbox, same transaction)
+        foreach ($order->releaseEvents() as $event) {
+            $this->eventDispatcher->dispatch($event);
+        }
+
+        foreach ($products as $product) {
+            foreach ($product->releaseEvents() as $event) {
                 $this->eventDispatcher->dispatch($event);
             }
+        }
 
-            foreach ($products as $product) {
-                foreach ($product->releaseEvents() as $event) {
-                    $this->eventDispatcher->dispatch($event);
-                }
-            }
+        return $order;
+    }
 
-            return $order->id();
-        });
+    private function elapsedMs(int $startedAt): float
+    {
+        return (hrtime(true) - $startedAt) / 1_000_000;
     }
 }
