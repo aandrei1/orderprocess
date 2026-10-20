@@ -1,4 +1,4 @@
-.PHONY: help deploy clean logs-up logs-init logs-down build up down logs shell install test unit test-db integration phpstan cs cs-fix migrate migrate-dry consume consume-failed cache-clear cc check console composer seed-products seed-orders ui ui-install ui-build ui-check ui-preview
+.PHONY: help deploy clean logs-up logs-init logs-down kibana-import kibana-export build up down logs shell install test unit test-db integration phpstan cs cs-fix migrate migrate-dry consume consume-failed cache-clear cc check console composer seed-products seed-orders ui ui-install ui-build ui-check ui-preview
 
 # Load .env so targets can use its variables (APP_ENV, DATABASE_URL, ...).
 # Real environment variables still win over these.
@@ -51,6 +51,20 @@ logs-init: ## Re-apply the orders-* index template and Kibana data view (idempot
 
 logs-down: ## Stop the log stack (data is kept in volumes)
 	$(DC) --profile logs stop filebeat kibana elasticsearch
+
+kibana-import: ## Import the "Orders" dashboard (docker/kibana/orders-dashboard.ndjson) into a running Kibana, overwriting
+	@out=$$($(DC) exec -T php curl -fsS -X POST "http://kibana:5601/api/saved_objects/_import?overwrite=true" \
+		-H 'kbn-xsrf: true' -F 'file=@-;filename=orders-dashboard.ndjson' < docker/kibana/orders-dashboard.ndjson) \
+		&& echo "$$out" && echo "$$out" | grep -q '"success":true'
+	@echo ""
+	@echo "Imported: http://localhost:5601/app/dashboards#/view/orders-dashboard"
+
+kibana-export: ## Re-export the "Orders" dashboard + dependencies to docker/kibana/orders-dashboard.ndjson
+	$(DC) exec -T php curl -fsS -X POST http://kibana:5601/api/saved_objects/_export \
+		-H 'kbn-xsrf: true' -H 'Content-Type: application/json' \
+		-d '{"objects":[{"type":"dashboard","id":"orders-dashboard"}],"includeReferencesDeep":true,"excludeExportDetails":true}' \
+		> docker/kibana/orders-dashboard.ndjson.tmp
+	mv docker/kibana/orders-dashboard.ndjson.tmp docker/kibana/orders-dashboard.ndjson
 
 ## Dependencies
 

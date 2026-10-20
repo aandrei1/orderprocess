@@ -251,6 +251,19 @@ Elasticsearch needs `vm.max_map_count >= 262144` on the Docker host. Docker Desk
 Note: with `compose.override.yaml`, `/app` is a live mount of the project folder, so `vendor/` comes from the host. A container created without the override has no mount and runs the image's own copy of `/app`. After recreating `php`, run `make install` (or `make deploy`).
 
 
+### Orders dashboard
+
+`docker/kibana/orders-dashboard.ndjson` holds the Kibana "Orders" dashboard (6 Lens panels + a saved search + the `orders` data view), exported with the Saved Objects API including dependencies.
+
+```
+make kibana-import     # import it (overwrite) into a running Kibana, e.g. a fresh one after make logs-up
+make kibana-export     # re-export after editing the dashboard in the UI, then commit the ndjson
+```
+
+Open [localhost:5601/app/dashboards#/view/orders-dashboard](http://localhost:5601/app/dashboards#/view/orders-dashboard). Default range is the last hour; the three time series use a fixed 1-minute interval. Panels: orders per minute (placed vs failed), failure rate, failures by `failure_reason`, revenue per minute, top 10 products, latency p50/p95 and the latest failures (timestamp, reason, message, correlation id).
+
+Notes: revenue is `sum(context.total_amount) / 100`, i.e. **RON** (the log carries bani, and the currency is not logged, so RON is assumed). Products show as UUIDs because the log has no product name. Re-exporting changes `created_at`/`updated_at`/`version` in every line, which makes noisy diffs.
+
 ## Available commands
 
 All Makefile targets run inside the `php` container; `make help` lists them.
@@ -260,6 +273,7 @@ All Makefile targets run inside the `php` container; `make help` lists them.
 | `make deploy` | full bring-up: build, up, composer, migrate, log stack, frontend deps + dev server |
 | `make up` / `make down` | start / stop the services |
 | `make logs-up` / `make logs-init` / `make logs-down` | start the log stack / re-apply template + data view / stop it |
+| `make kibana-import` / `make kibana-export` | import / re-export the Kibana Orders dashboard |
 | `make shell` | shell inside the php container |
 | `make install` | `composer install` |
 | `make composer c="require foo/bar"` | arbitrary composer command |
