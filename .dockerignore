@@ -1,0 +1,13 @@
+# Keep the php image build context small. The frontend is built on the host
+# (node_modules/.bin holds symlinks the Docker build context cannot read) and
+# var/ is runtime state; /app is bind-mounted live in dev anyway.
+.git
+.idea
+.vscode
+.phpunit.cache
+.php-cs-fixer.cache
+composer.phar
+frontend
+var
+docker/filebeat
+docker/elastic
