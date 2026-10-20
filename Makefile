@@ -1,4 +1,4 @@
-.PHONY: help logs-up logs-init logs-down build up down logs shell install test unit test-db integration phpstan cs cs-fix migrate migrate-dry consume consume-failed cache-clear cc check console composer seed-products seed-orders ui ui-install ui-build ui-check ui-preview
+.PHONY: help deploy clean logs-up logs-init logs-down build up down logs shell install test unit test-db integration phpstan cs cs-fix migrate migrate-dry consume consume-failed cache-clear cc check console composer seed-products seed-orders ui ui-install ui-build ui-check ui-preview
 
 # Load .env so targets can use its variables (APP_ENV, DATABASE_URL, ...).
 # Real environment variables still win over these.
@@ -25,8 +25,19 @@ up: ## Start the app services + ES/Kibana in background (Filebeat: see logs-up)
 down: ## Stop and remove all containers, incl. Filebeat (volumes are kept)
 	$(DC) --profile logs down
 
+clean: ## Stop and remove all containers and the network, incl. Filebeat and orphans (named volumes/data are kept)
+	$(DC) --profile logs down --remove-orphans
+
 shell: ## Shell inside the php container (alpine -> sh)
 	$(EXEC) bash
+
+deploy: build up install migrate logs-up ui-install ## Full bring-up: images, containers, composer, migrations, log stack, frontend deps, then the frontend dev server (blocks; ctrl-c stops only the dev server)
+	@echo ""
+	@echo "App:      http://localhost:8000   (API: POST /api/orders)"
+	@echo "Kibana:   http://localhost:5601   (data view orders-*)"
+	@echo "RabbitMQ: http://localhost:15672  (guest / guest)"
+	@echo "Frontend: http://localhost:5173 (dev server starting below, ctrl-c to stop it; containers keep running)"
+	@$(MAKE) ui
 
 ## Log stack (DEV ONLY: Elasticsearch runs without security; see README)
 
@@ -78,7 +89,7 @@ check: unit phpstan cs ## Pre-commit gate: unit tests + phpstan + style check
 ## Database / messaging
 
 migrate: ## Apply Doctrine migrations
-	$(CONSOLE) doctrine:migrations:migrate
+	$(CONSOLE) doctrine:migrations:migrate --no-interaction
 
 migrate-dry: ## Preview pending migrations without applying
 	$(CONSOLE) doctrine:migrations:migrate --dry-run
