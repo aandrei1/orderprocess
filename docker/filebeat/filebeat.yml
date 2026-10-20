@@ -1,0 +1,39 @@
+# DEV-ONLY: ships var/log/orders.json (one Monolog JSON document per line)
+# to the local, unsecured Elasticsearch from docker-compose.yml.
+
+filebeat.inputs:
+  - type: filestream
+    id: orders-json
+    paths:
+      - /logs/orders.json
+    parsers:
+      - ndjson:
+          # target "" lifts message/context/extra/level/... to the document
+          # root, so context.* and extra.* reach ES exactly as written.
+          target: ""
+          overwrite_keys: true
+          add_error_key: true
+
+processors:
+  # Monolog's "datetime" (ISO 8601 with microseconds) becomes @timestamp.
+  - timestamp:
+      field: datetime
+      layouts:
+        - "2006-01-02T15:04:05.999999Z07:00"
+      test:
+        - "2026-10-20T18:43:17.674537+00:00"
+  - drop_fields:
+      fields: [datetime]
+      ignore_missing: true
+
+# Index template and Kibana data view are created by the logs-init service
+# (docker/elastic/init.sh). Filebeat 8.x would otherwise create a data stream
+# named "orders", but we want plain daily indices.
+setup.ilm.enabled: false
+setup.template.enabled: false
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  index: "orders-%{+yyyy.MM.dd}"
+
+logging.level: info

@@ -17,6 +17,7 @@ The project is structured after DDD / hexagonal architecture principles: the dom
 - [HTTP API](#http-api)
 - [Web interface](#web-interface)
 - [Setup and startup](#setup-and-startup)
+- [Order logs in Kibana](#order-logs-in-kibana)
 - [Available commands](#available-commands)
 - [Manually testing the flow](#manually-testing-the-flow)
 - [Testing and quality gates](#testing-and-quality-gates)
@@ -189,13 +190,21 @@ The dev server proxies `/api` to `localhost:8000` (see `frontend/vite.config.ts`
 
 ## Setup and startup
 
-Requirements: Docker + Docker Compose. Everything PHP runs inside the `php` container.
+Requirements: Docker + Docker Compose, `make` and Node (the frontend is built on the host). Everything PHP runs inside the `php` container.
+
+```bash
+make deploy     # everything below, in order, ending with the frontend dev server (blocks; ctrl-c stops only it)
+```
+
+or step by step:
 
 ```bash
 make build      # build the docker images
-make up         # start php (8000), postgres (5432), rabbitmq (5672 + UI 15672)
+make up         # start php (8000), postgres (5432), rabbitmq (5672 + UI 15672), elasticsearch (9200), kibana (5601)
 make install    # composer install in the container
 make migrate    # apply Doctrine migrations
+make logs-up    # index template + Kibana data view, then start Filebeat
+make ui-install ui   # frontend deps + dev server on :5173
 ```
 
 Exposed services:
@@ -217,13 +226,40 @@ make seed-orders   n=50 seed=123   # place random orders via app:place-order
 
 Both accept an optional `seed` for reproducible runs. `seed-orders` goes through the real flow (stock → payment → outbox), so some orders may legitimately fail on insufficient stock.
 
+## Order logs in Kibana
+
+> **Dev only:** Elasticsearch runs with `xpack.security.enabled=false` (no authentication, no TLS) and is published on :9200. Do not expose it.
+
+The `orders` Monolog channel writes one JSON document per line to `var/log/orders.json`. A named volume (`app_logs`, mounted on `/app/var/log` in `php` and read-only on `/logs` in `filebeat`) shares it; Filebeat decodes each line, uses `datetime` as `@timestamp` and ships it to Elasticsearch into the daily index `orders-YYYY.MM.DD`. `context.*` and `extra.*` keep their names (`context.event`, `context.order_id`, `extra.correlation_id`, ...).
+
+```bash
+make logs-up      # start ES + Kibana, apply the orders-* template and data view, start Filebeat
+make logs-init    # re-apply only the template and data view (idempotent)
+make logs-down    # stop the log stack (data stays in volumes)
+```
+
+| Service | Port | Notes |
+|---|---|---|
+| elasticsearch | 9200 | e.g. `curl localhost:9200/orders-*/_search?pretty` |
+| kibana | 5601 | open [localhost:5601](http://localhost:5601) → Discover → data view `orders` (`orders-*`) |
+| filebeat | - | config in `docker/filebeat/filebeat.yml`; new lines show up after ~10 s |
+
+Why `logs-up` instead of plain `docker compose up`: Filebeat is in the `logs` profile and starts only after the index template exists. A document indexed earlier would get a dynamic mapping (strings as `text` + `.keyword`), and a field's mapping cannot change once the daily index exists. Filebeat's own template loading is disabled because 8.19 would create a data stream named `orders`.
+
+Elasticsearch needs `vm.max_map_count >= 262144` on the Docker host. Docker Desktop on WSL2 usually already has it; if ES exits at startup with a `max virtual memory areas` error, run `sudo sysctl -w vm.max_map_count=262144` in the WSL distro (or `wsl -d docker-desktop sysctl -w vm.max_map_count=262144`).
+
+Note: with `compose.override.yaml`, `/app` is a live mount of the project folder, so `vendor/` comes from the host. A container created without the override has no mount and runs the image's own copy of `/app`. After recreating `php`, run `make install` (or `make deploy`).
+
+
 ## Available commands
 
 All Makefile targets run inside the `php` container; `make help` lists them.
 
 | Command | Effect |
 |---|---|
+| `make deploy` | full bring-up: build, up, composer, migrate, log stack, frontend deps + dev server |
 | `make up` / `make down` | start / stop the services |
+| `make logs-up` / `make logs-init` / `make logs-down` | start the log stack / re-apply template + data view / stop it |
 | `make shell` | shell inside the php container |
 | `make install` | `composer install` |
 | `make composer c="require foo/bar"` | arbitrary composer command |

@@ -1,4 +1,4 @@
-.PHONY: help build up down logs shell install test unit test-db integration phpstan cs cs-fix migrate migrate-dry consume consume-failed cache-clear cc check console composer seed-products seed-orders ui ui-install ui-build ui-check ui-preview
+.PHONY: help logs-up logs-init logs-down build up down logs shell install test unit test-db integration phpstan cs cs-fix migrate migrate-dry consume consume-failed cache-clear cc check console composer seed-products seed-orders ui ui-install ui-build ui-check ui-preview
 
 # Load .env so targets can use its variables (APP_ENV, DATABASE_URL, ...).
 # Real environment variables still win over these.
@@ -19,14 +19,27 @@ help: ## Show this help
 build: ## Build docker compose images
 	$(DC) build
 
-up: ## Start all services (php, postgres, rabbitmq) in background
+up: ## Start the app services + ES/Kibana in background (Filebeat: see logs-up)
 	$(DC) up -d
 
-down: ## Stop all services
-	$(DC) down
+down: ## Stop and remove all containers, incl. Filebeat (volumes are kept)
+	$(DC) --profile logs down
 
 shell: ## Shell inside the php container (alpine -> sh)
 	$(EXEC) bash
+
+## Log stack (DEV ONLY: Elasticsearch runs without security; see README)
+
+logs-up: ## Start ES + Kibana, create the orders-* template and data view (via the php container), then start Filebeat
+	$(DC) up -d --wait elasticsearch kibana
+	$(EXEC) env ES_URL=http://elasticsearch:9200 KIBANA_URL=http://kibana:5601 sh docker/elastic/init.sh
+	$(DC) --profile logs up -d filebeat
+
+logs-init: ## Re-apply the orders-* index template and Kibana data view (idempotent, needs php up)
+	$(EXEC) env ES_URL=http://elasticsearch:9200 KIBANA_URL=http://kibana:5601 sh docker/elastic/init.sh
+
+logs-down: ## Stop the log stack (data is kept in volumes)
+	$(DC) --profile logs stop filebeat kibana elasticsearch
 
 ## Dependencies
 
