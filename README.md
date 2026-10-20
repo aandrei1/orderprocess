@@ -258,11 +258,12 @@ Note: with `compose.override.yaml`, `/app` is a live mount of the project folder
 ```
 make kibana-import     # import it (overwrite) into a running Kibana, e.g. a fresh one after make logs-up
 make kibana-export     # re-export after editing the dashboard in the UI, then commit the ndjson
+make generate-orders n=30   # DEV traffic: CLI + HTTP orders, some with insufficient stock / unknown product
 ```
 
 Open [localhost:5601/app/dashboards#/view/orders-dashboard](http://localhost:5601/app/dashboards#/view/orders-dashboard). Default range is the last hour; the three time series use a fixed 1-minute interval. Panels: orders per minute (placed vs failed), failure rate, failures by `failure_reason`, revenue per minute, top 10 products, latency p50/p95 and the latest failures (timestamp, reason, message, correlation id).
 
-Notes: revenue is `sum(context.total_amount) / 100`, i.e. **RON** (the log carries bani, and the currency is not logged, so RON is assumed). Products show as UUIDs because the log has no product name. Re-exporting changes `created_at`/`updated_at`/`version` in every line, which makes noisy diffs.
+Notes: revenue is `sum(context.total_amount) / 100`, i.e. **RON** (the log carries bani, and the currency is not logged, so RON is assumed). Products show as UUIDs because the log has no product name. `make generate-orders` **consumes dev stock**: at most 100 requests per run and 1-2 units per successful order (so at most 200 units). Re-exporting changes `created_at`/`updated_at`/`version` in every line, which makes noisy diffs.
 
 ## Available commands
 
@@ -274,6 +275,7 @@ All Makefile targets run inside the `php` container; `make help` lists them.
 | `make up` / `make down` | start / stop the services |
 | `make logs-up` / `make logs-init` / `make logs-down` | start the log stack / re-apply template + data view / stop it |
 | `make kibana-import` / `make kibana-export` | import / re-export the Kibana Orders dashboard |
+| `make generate-orders n=30` | dev order traffic for the dashboard (consumes stock, max 100) |
 | `make shell` | shell inside the php container |
 | `make install` | `composer install` |
 | `make composer c="require foo/bar"` | arbitrary composer command |

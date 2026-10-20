@@ -1,4 +1,4 @@
-.PHONY: help deploy clean logs-up logs-init logs-down kibana-import kibana-export build up down logs shell install test unit test-db integration phpstan cs cs-fix migrate migrate-dry consume consume-failed cache-clear cc check console composer seed-products seed-orders ui ui-install ui-build ui-check ui-preview
+.PHONY: help deploy clean logs-up logs-init logs-down kibana-import kibana-export generate-orders build up down logs shell install test unit test-db integration phpstan cs cs-fix migrate migrate-dry consume consume-failed cache-clear cc check console composer seed-products seed-orders ui ui-install ui-build ui-check ui-preview
 
 # Load .env so targets can use its variables (APP_ENV, DATABASE_URL, ...).
 # Real environment variables still win over these.
@@ -138,6 +138,9 @@ seed-products: ## Seed the product catalog, e.g. make seed-products n=20 seed=12
 
 seed-orders: ## Place n random orders via app:place-order, e.g. make seed-orders n=50 seed=123
 	$(EXEC) bash bin/seed-orders.sh $(or $(n),10) $(seed)
+
+generate-orders: ## DEV: send mixed order traffic (CLI + HTTP, ok/no stock/unknown product) for the dashboard, e.g. make generate-orders n=30 (max 100, consumes dev stock)
+	bash scripts/generate-orders.sh $(or $(n),30)
 
 ## Misc
 
