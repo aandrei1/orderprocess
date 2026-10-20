@@ -18,3 +18,11 @@
 /phpunit.xml
 /.phpunit.cache/
 ###< phpunit/phpunit ###
+
+###> local tooling ###
+/.idea/
+/composer.phar
+.DS_Store
+Thumbs.db
+*.swp
+###< local tooling ###
