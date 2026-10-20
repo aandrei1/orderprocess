@@ -11,6 +11,9 @@ use App\Orders\Application\Port\TransactionManager;
 use App\Orders\Domain\Event\OrderPaid;
 use App\Orders\Domain\Event\OrderPlaced;
 use App\Orders\Domain\Event\StockBelowThreshold;
+use App\Orders\Domain\Exception\InsufficientStock;
+use App\Orders\Domain\Exception\PaymentFailed;
+use App\Orders\Domain\Exception\ProductNotFound;
 use App\Orders\Domain\Model\Product;
 use App\Orders\Domain\Model\ValueObject\CustomerId;
 use App\Orders\Domain\Model\ValueObject\Money;
@@ -134,7 +137,7 @@ final class PlaceOrderHandlerTest extends TestCase
         $dispatchedEvents = [];
         $handler = $this->createHandler($productRepository, $paymentGateway, $dispatchedEvents);
 
-        $this->expectException(\DomainException::class);
+        $this->expectException(InsufficientStock::class);
 
         $handler(new PlaceOrder(
             CustomerId::fromString('33333333-3333-3333-3333-333333333333'),
@@ -153,7 +156,7 @@ final class PlaceOrderHandlerTest extends TestCase
         $dispatchedEvents = [];
         $handler = $this->createHandler($productRepository, $paymentGateway, $dispatchedEvents);
 
-        $this->expectException(\DomainException::class);
+        $this->expectException(ProductNotFound::class);
 
         $handler(new PlaceOrder(
             CustomerId::fromString('33333333-3333-3333-3333-333333333333'),
@@ -174,7 +177,7 @@ final class PlaceOrderHandlerTest extends TestCase
         $dispatchedEvents = [];
         $handler = $this->createHandler($productRepository, $paymentGateway, $dispatchedEvents);
 
-        $this->expectException(\DomainException::class);
+        $this->expectException(PaymentFailed::class);
 
         $handler(new PlaceOrder(
             CustomerId::fromString('33333333-3333-3333-3333-333333333333'),

@@ -7,6 +7,7 @@ namespace App\Orders\Domain\Model;
 use App\Orders\Domain\Event\DomainEvent;
 use App\Orders\Domain\Event\ProductOutOfStock;
 use App\Orders\Domain\Event\StockBelowThreshold;
+use App\Orders\Domain\Exception\InsufficientStock;
 use App\Orders\Domain\Model\ValueObject\Money;
 use App\Orders\Domain\Model\ValueObject\ProductId;
 use App\Orders\Domain\Model\ValueObject\Quantity;
@@ -38,7 +39,7 @@ final class Product
     public function decrementStock(Quantity $quantity, \DateTimeImmutable $occurredAt): void
     {
         if ($quantity->toInt() > $this->stockQuantity) {
-            throw new \DomainException(sprintf('Insufficient stock for product %s: requested %d, available %d.', $this->id->toString(), $quantity->toInt(), $this->stockQuantity));
+            throw InsufficientStock::forProduct($this->id, $quantity->toInt(), $this->stockQuantity);
         }
 
         $this->stockQuantity -= $quantity->toInt();

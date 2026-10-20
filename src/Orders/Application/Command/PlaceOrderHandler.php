@@ -6,6 +6,8 @@ namespace App\Orders\Application\Command;
 
 use App\Orders\Application\Port\DomainEventDispatcher;
 use App\Orders\Application\Port\TransactionManager;
+use App\Orders\Domain\Exception\PaymentFailed;
+use App\Orders\Domain\Exception\ProductNotFound;
 use App\Orders\Domain\Model\Order;
 use App\Orders\Domain\Model\OrderItem;
 use App\Orders\Domain\Model\ValueObject\OrderId;
@@ -35,10 +37,11 @@ final class PlaceOrderHandler
 
             // 1. Check stock + decrement
             foreach ($command->items() as $item) {
-                $product = $this->productRepository->findById(ProductId::fromString($item['productId']));
+                $productId = ProductId::fromString($item['productId']);
+                $product = $this->productRepository->findById($productId);
 
                 if (null === $product) {
-                    throw new \DomainException(sprintf('Product %s not found.', $item['productId']));
+                    throw ProductNotFound::withId($productId);
                 }
 
                 $quantity = Quantity::fromInt($item['quantity']);
@@ -58,7 +61,7 @@ final class PlaceOrderHandler
 
             // 3. Charge on the spot (mock)
             if (!$this->paymentGateway->charge($order->total())) {
-                throw new \DomainException('Payment failed.');
+                throw PaymentFailed::refused();
             }
 
             $order->markPaid($occurredAt);

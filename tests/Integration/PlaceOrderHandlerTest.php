@@ -8,6 +8,8 @@ use App\Orders\Application\Command\PlaceOrder;
 use App\Orders\Application\Command\PlaceOrderHandler;
 use App\Orders\Domain\Event\OrderPaid;
 use App\Orders\Domain\Event\OrderPlaced;
+use App\Orders\Domain\Exception\InsufficientStock;
+use App\Orders\Domain\Exception\ProductNotFound;
 use App\Orders\Domain\Model\Product;
 use App\Orders\Domain\Model\ValueObject\CustomerId;
 use App\Orders\Domain\Model\ValueObject\Money;
@@ -126,8 +128,8 @@ final class PlaceOrderHandlerTest extends KernelTestCase
                 ],
             ));
 
-            self::fail('Expected a DomainException for insufficient stock.');
-        } catch (\DomainException $e) {
+            self::fail('Expected InsufficientStock.');
+        } catch (InsufficientStock $e) {
             self::assertStringContainsString('Insufficient stock', $e->getMessage());
         }
 
@@ -171,7 +173,7 @@ final class PlaceOrderHandlerTest extends KernelTestCase
     {
         $chocolate = $this->givenProduct('Dark chocolate', price: 4686, stock: 242, minThreshold: 10);
 
-        $this->expectException(\DomainException::class);
+        $this->expectException(ProductNotFound::class);
 
         try {
             ($this->handler)(new PlaceOrder(

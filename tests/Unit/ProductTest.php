@@ -6,6 +6,7 @@ namespace App\Tests\Unit;
 
 use App\Orders\Domain\Event\ProductOutOfStock;
 use App\Orders\Domain\Event\StockBelowThreshold;
+use App\Orders\Domain\Exception\InsufficientStock;
 use App\Orders\Domain\Model\Product;
 use App\Orders\Domain\Model\ValueObject\Money;
 use App\Orders\Domain\Model\ValueObject\ProductId;
@@ -61,7 +62,7 @@ final class ProductTest extends TestCase
     {
         $product = $this->createProduct(5, 3);
 
-        $this->expectException(\DomainException::class);
+        $this->expectException(InsufficientStock::class);
 
         $product->decrementStock(Quantity::fromInt(6), new \DateTimeImmutable('2026-01-01 10:00:00'));
     }
