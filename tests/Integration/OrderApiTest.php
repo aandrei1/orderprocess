@@ -48,6 +48,15 @@ final class OrderApiTest extends KernelTestCase
         $this->entityManager->close();
     }
 
+    public function testEveryResponseCarriesTheCorrelationId(): void
+    {
+        $echoed = self::$kernel->handle(Request::create('/api/products', server: ['HTTP_X_CORRELATION_ID' => 'frontend-req_42']));
+        self::assertSame('frontend-req_42', $echoed->headers->get('X-Correlation-Id'));
+
+        $generated = self::$kernel->handle(Request::create('/api/products'));
+        self::assertMatchesRegularExpression('/^[0-9a-f-]{36}$/', (string) $generated->headers->get('X-Correlation-Id'));
+    }
+
     public function testProductListingOffersOnlyWhatIsInStock(): void
     {
         $available = $this->givenProduct('Green tea', price: 1000, stock: 12);
