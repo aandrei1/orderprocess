@@ -32,6 +32,13 @@ RUN composer install \
 # Copy project files
 COPY . .
 
+# Make the image self-contained: generate the autoloader and warm the prod
+# cache. Docker Compose never notices (the bind mount in compose.override.yaml
+# replaces /app and `make install` rebuilds vendor/), but Kubernetes has no
+# bind mount and runs exactly what is baked in here.
+RUN composer dump-autoload --optimize --no-dev \
+    && APP_ENV=prod APP_DEBUG=0 php bin/console cache:warmup
+
 EXPOSE 8000
 
 CMD ["php", "-S", "0.0.0.0:8000", "-t", "public/"]
